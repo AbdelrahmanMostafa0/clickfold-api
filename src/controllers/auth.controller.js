@@ -127,7 +127,15 @@ const forgotPassword = async (req, res) => {
       .json({ message: error?.message || "Internal Server Error" });
   }
 };
-
+const logoutUser = async (req, res) => {
+  try {
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+    return sendSuccess(res, null, "User logged out successfully", 200);
+  } catch (error) {
+    return sendError(res, error?.message || "Internal Server Error", 500);
+  }
+};
 const resetPassword = async (req, res) => {
   try {
   } catch (error) {
@@ -144,4 +152,5 @@ export {
   refreshAccessToken,
   forgotPassword,
   resetPassword,
+  logoutUser,
 };

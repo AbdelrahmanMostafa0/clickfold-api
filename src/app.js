@@ -7,10 +7,10 @@ import connectDB from "./config/db.js";
 import routes from "./routes/index.js";
 import morgan from "morgan";
 import logger from "./utils/logger.js";
+import { generalLimiter } from "./middlewares/rateLimit.middleware.js";
 dotenv.config();
 
 connectDB();
-
 const app = express();
 app.use(
   morgan("dev", {
@@ -29,6 +29,7 @@ app.use(
 );
 app.use(cookieParser());
 app.use(bodyParser.json());
+app.use(generalLimiter);
 
 app.use("/api", routes);
 
@@ -38,3 +39,5 @@ app.get("/", (req, res) => {
 app.listen(process.env.PORT || 9000, () => {
   console.log(`Server is running on port ${process.env.PORT || 9000}`);
 });
+
+export default app;

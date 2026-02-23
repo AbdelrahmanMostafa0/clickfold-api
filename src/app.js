@@ -2,7 +2,14 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
+import connectDB from "./config/db.js";
 import routes from "./routes/index.js";
+
+dotenv.config();
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 

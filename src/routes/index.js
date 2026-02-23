@@ -1,8 +1,12 @@
-import express from "express";
-const router = express.Router();
+import { Router } from "express";
+import authRoutes from "./auth.route.js";
+// import linkRoutes from "./links.route.js";
+// import aiRoutes from "./ai.route.js";
 
-router.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+const router = Router();
+
+router.use("/auth", authRoutes);
+// router.use("/links", linkRoutes);
+// router.use("/ai", aiRoutes);
 
 export default router;

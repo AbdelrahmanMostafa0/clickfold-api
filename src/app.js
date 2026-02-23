@@ -8,12 +8,20 @@ import routes from "./routes/index.js";
 
 dotenv.config();
 
-// Connect to MongoDB
 connectDB();
 
 const app = express();
 
-app.use(cors({}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://b8lnk.vercel.app",
+    ],
+    credentials: true,
+  }),
+);
 app.use(cookieParser());
 app.use(bodyParser.json());
 
@@ -22,6 +30,6 @@ app.use("/api", routes);
 app.get("/", (req, res) => {
   res.send("b8lnk backend is running!");
 });
-app.listen(9000, () => {
-  console.log("Server is running on port 9000");
+app.listen(process.env.PORT || 9000, () => {
+  console.log(`Server is running on port ${process.env.PORT || 9000}`);
 });

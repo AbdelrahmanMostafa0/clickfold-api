@@ -5,10 +5,11 @@ import {
   getLink,
   getUserLinks,
 } from "../controllers/link.controller.js";
+import upload from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
-router.post("/", authMiddleware, createLink);
+router.post("/", authMiddleware, upload.single("ogImage"), createLink);
 router.get("/", authMiddleware, getUserLinks);
 router.get("/:slug", getLink);
 export default router;

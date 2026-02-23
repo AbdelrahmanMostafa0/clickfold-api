@@ -1,7 +1,7 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import { sendSuccess, sendError } from "../utils/response.js";
-import { signupSchema } from "../validators/auth.validator.js";
+import { loginSchema, signupSchema } from "../validators/auth.validator.js";
 import {
   generateTokens,
   setTokenCookies,
@@ -45,7 +45,7 @@ const loginUser = async (req, res) => {
     if (!validationResult.success) {
       return sendError(res, validationResult.error.errors[0].message, 400);
     }
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return sendError(res, "User not found", 404);
     }

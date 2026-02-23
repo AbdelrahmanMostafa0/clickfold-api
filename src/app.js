@@ -5,13 +5,18 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import routes from "./routes/index.js";
-
+import morgan from "morgan";
+import logger from "./utils/logger.js";
 dotenv.config();
 
 connectDB();
 
 const app = express();
-
+app.use(
+  morgan("dev", {
+    stream: { write: (message) => logger.info(message.trim()) },
+  }),
+);
 app.use(
   cors({
     origin: [

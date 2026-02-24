@@ -51,13 +51,13 @@ export const generateTokens = (payload) => {
 export const setTokenCookies = (res, accessToken, refreshToken) => {
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "none",
     maxAge: parseExpiry(process.env.ACCESS_TOKEN_EXPIRY || "15m"),
   });
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "none",
     maxAge: parseExpiry(process.env.REFRESH_TOKEN_EXPIRY || "7d"),
   });

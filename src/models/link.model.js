@@ -12,6 +12,7 @@ const linkSchema = new Schema(
     },
     destination: { type: String, required: true },
     clicks: { type: Number, default: 0 },
+    susPopups: { type: Boolean, default: false },
     og: {
       title: { type: String },
       description: { type: String },

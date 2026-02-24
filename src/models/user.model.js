@@ -24,6 +24,14 @@ const userSchema = new Schema(
       type: String,
       default: null,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
     provider: {
       type: String,
       enum: ["email", "google"],

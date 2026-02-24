@@ -7,7 +7,12 @@ import {
   setTokenCookies,
   verifyRefreshToken,
 } from "../utils/token.util.js";
+const COOLDOWN_DAYS = 3;
 
+const canReuseEmail = (deletedAt) => {
+  const cooldownMs = COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  return Date.now() - new Date(deletedAt).getTime() > cooldownMs;
+};
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -17,7 +22,13 @@ const registerUser = async (req, res) => {
     }
     const user = await User.findOne({ email });
     if (user) {
-      return sendError(res, "User already exists", 400);
+      if (!user.isDeleted) {
+        return sendError(res, "User already exists", 400);
+      }
+      if (!canReuseEmail(user.deletedAt)) {
+        return sendError(res, "You can create a new account after 3 days", 400);
+      }
+      await User.deleteOne({ _id: user._id });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await User.create({
@@ -48,6 +59,13 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return sendError(res, "User not found", 404);
+    }
+    if (user.isDeleted) {
+      return sendError(
+        res,
+        "Account is deleted. Please create a new account.",
+        400,
+      );
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -101,6 +119,13 @@ const googleAuth = async (req, res) => {
       return sendError(res, "Invalid access token", 400);
     }
     let user = await User.findOne({ email });
+    if (user && user.isDeleted) {
+      if (!canReuseEmail(user.deletedAt)) {
+        return sendError(res, "You can create a new account after 3 days", 400);
+      }
+      await User.deleteOne({ _id: user._id });
+      user = null;
+    }
     if (!user) {
       user = await User.create({
         name,
@@ -108,8 +133,13 @@ const googleAuth = async (req, res) => {
         avatar: picture,
         provider: "google",
         googleId,
-        //    isVerified: true,
       });
+    } else if (!user.googleId) {
+      // Link Google account to existing email/password user
+      user.googleId = googleId;
+      user.provider = "google";
+      if (!user.avatar) user.avatar = picture;
+      await user.save();
     }
     const { accessToken, refreshToken } = generateTokens({ id: user._id });
     setTokenCookies(res, accessToken, refreshToken);

@@ -244,6 +244,80 @@
           },
           "401": { "description": "Unauthorized" }
         }
+      },
+      "patch": {
+        "tags": ["Profile"],
+        "summary": "Update user profile",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "password": {
+                    "type": "string",
+                    "description": "Current password (required when changing password)"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "description": "New password"
+                  },
+                  "avatar": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseUser" }
+              }
+            }
+          },
+          "400": { "description": "Invalid password" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "User not found" },
+          "500": { "description": "Internal Server Error" }
+        }
+      },
+      "delete": {
+        "tags": ["Profile"],
+        "summary": "Request account deletion",
+        "description": "Sends a confirmation email with a deletion link. The link expires in 15 minutes.",
+        "responses": {
+          "200": { "description": "Confirmation email sent" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "User not found" },
+          "500": { "description": "Internal Server Error" }
+        }
+      }
+    },
+    "/profile/confirm-delete": {
+      "delete": {
+        "tags": ["Profile"],
+        "summary": "Confirm account deletion",
+        "description": "Confirms account deletion using the token from the email link.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "JWT deletion token from email"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Account deleted successfully" },
+          "400": { "description": "Token missing or account already deleted" },
+          "401": { "description": "Invalid or expired token" },
+          "404": { "description": "User not found" },
+          "500": { "description": "Internal Server Error" }
+        }
       }
     },
     "/links": {
@@ -290,6 +364,84 @@
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/ApiResponseLinkList" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/links/check-slug/{slug}": {
+      "get": {
+        "tags": ["Links"],
+        "summary": "Check slug availability",
+        "description": "Checks if a slug is available. If taken, returns up to 4 alternative suggestions.",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Slug is available" },
+          "400": {
+            "description": "Slug already exists (returns suggestions)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": {
+                      "type": "string",
+                      "example": "Slug already exists"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["my-link-a1b2", "my-link-c3d4"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/links/stats": {
+      "get": {
+        "tags": ["Links"],
+        "summary": "Get user links statistics",
+        "description": "Returns aggregated statistics for the authenticated user's links.",
+        "responses": {
+          "200": {
+            "description": "Stats fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": {
+                      "type": "string",
+                      "example": "Stats fetched successfully"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "activeLinks": { "type": "number", "example": 5 },
+                        "totalClicks": { "type": "number", "example": 142 },
+                        "totalLinks": { "type": "number", "example": 8 }
+                      }
+                    }
+                  }
+                }
               }
             }
           },

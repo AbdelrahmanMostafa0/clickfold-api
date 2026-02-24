@@ -5,6 +5,7 @@ import cloudinary from "../utils/cloudinary.js";
 import geoip from "geoip-lite";
 import { UAParser } from "ua-parser-js";
 import Click from "../models/click.model.js";
+import { nanoid } from "nanoid";
 const createLink = async (req, res) => {
   try {
     const { slug, destination, ogTitle, ogDescription } = req.body;
@@ -24,7 +25,10 @@ const createLink = async (req, res) => {
       ogImage = result.secure_url;
       fs.unlinkSync(req.file.path);
     }
-
+    const linkExists = await Link.findOne({ slug });
+    if (linkExists) {
+      return sendError(res, "Slug already exists", 400);
+    }
     const link = await Link.create({
       slug,
       destination,
@@ -96,6 +100,32 @@ const redirectLink = async (req, res) => {
   }
 };
 
+const checkSlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const link = await Link.findOne({ slug });
+    if (link) {
+      const suggestions = [];
+      const candidates = Array.from(
+        { length: 6 },
+        () => `${slug}-${nanoid(4)}`,
+      );
+      const taken = await Link.find({ slug: { $in: candidates } }).select(
+        "slug",
+      );
+      const takenSlugs = new Set(taken.map((l) => l.slug));
+      const available = candidates
+        .filter((c) => !takenSlugs.has(c))
+        .slice(0, 4);
+      suggestions.push(...available);
+      return sendSuccess(res, suggestions, "Slug already exists", 400);
+    }
+    return sendSuccess(res, null, "Slug is available", 200);
+  } catch (error) {
+    return sendError(res, error.message, 500);
+  }
+};
+
 const userlinksStats = async (req, res) => {
   try {
     const stats = await Link.aggregate([
@@ -126,4 +156,11 @@ const userlinksStats = async (req, res) => {
   }
 };
 
-export { createLink, getLink, getUserLinks, redirectLink, userlinksStats };
+export {
+  createLink,
+  getLink,
+  getUserLinks,
+  redirectLink,
+  userlinksStats,
+  checkSlug,
+};

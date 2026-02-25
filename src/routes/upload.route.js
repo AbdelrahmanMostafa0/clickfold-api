@@ -5,7 +5,6 @@ import cloudinary from "../utils/cloudinary.js";
 const router = Router();
 
 router.post("/", upload.single("file"), async (req, res) => {
-  console.log("req.body", req.body);
   try {
     if (!req.file) {
       return res

@@ -23,7 +23,7 @@ export const authMiddleware = async (req, res, next) => {
     ).select("-password");
 
     if (!user) {
-      return sendError(res, "No user found", 401);
+      return sendError(res, "User not found", 401);
     }
 
     req.user = user;

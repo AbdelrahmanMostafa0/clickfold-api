@@ -20,7 +20,7 @@ const getProfile = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
-  const { name, password, newPassword } = req.body;
+  const { name } = req.body;
   const avatar = req.file;
   try {
     const user = req.user;
@@ -28,15 +28,12 @@ const updateProfile = async (req, res) => {
       return sendError(res, "User not found", 404);
     }
     if (name) {
+      if (name.length < 3 || name.length > 20) {
+        return sendError(res, "Name must be between 3 and 20 characters", 400);
+      }
       user.name = name;
     }
-    if (password && newPassword) {
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        return sendError(res, "Invalid password", 400);
-      }
-      user.password = newPassword;
-    }
+
     if (avatar) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "b8lnk/avatars",
@@ -57,6 +54,53 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const updatePassword = async (req, res) => {
+  const { password, newPassword } = req.body;
+  try {
+    const user = req.user;
+    if (!user) {
+      return sendError(res, "User not found", 404);
+    }
+    const userPass = await User.findById(user._id).select("password");
+    const isPasswordValid = await bcrypt.compare(password, userPass.password);
+    if (!isPasswordValid) {
+      return sendError(res, "Invalid password", 400);
+    }
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    return sendSuccess(res, null, "Password updated successfully", 200);
+  } catch (error) {
+    return sendError(res, error?.message || "Internal Server Error", 500);
+  }
+};
+
+const updateAvatar = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return sendError(res, "User not found", 404);
+    }
+    if (!req.file) {
+      return sendError(res, "Avatar not found", 400);
+    }
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "b8lnk/avatars",
+      transformation: {
+        width: 200,
+        height: 200,
+        crop: "fill",
+        gravity: "auto",
+      },
+    });
+    user.avatar = result.secure_url;
+    fs.unlinkSync(req.file.path);
+    await user.save();
+    return sendSuccess(res, user, "Avatar updated successfully", 200);
+  } catch (error) {
+    return sendError(res, error?.message || "Internal Server Error", 500);
+  }
+};
+
 const requestDeleteProfile = async (req, res) => {
   try {
     const user = req.user;
@@ -65,7 +109,6 @@ const requestDeleteProfile = async (req, res) => {
     }
 
     const token = generateDeleteToken(user._id.toString());
-    console.log("token", token);
     // Send confirmation email (fire-and-forget)
     sendEmail({
       to: user.email,
@@ -126,4 +169,6 @@ export {
   updateProfile,
   requestDeleteProfile,
   confirmDeleteProfile,
+  updatePassword,
+  updateAvatar,
 };

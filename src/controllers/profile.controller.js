@@ -4,7 +4,7 @@ import cloudinary from "../utils/cloudinary.js";
 import fs from "fs";
 import { sendEmail } from "../utils/email.js";
 import { deleteAccountEmail } from "../emails/delete-account.js";
-import { generateDeleteToken, verifyDeleteToken } from "../utils/token.util.js";
+import { generateTempToken, verifyTempToken } from "../utils/token.util.js";
 import User from "../models/user.model.js";
 
 const getProfile = async (req, res) => {
@@ -108,7 +108,7 @@ const requestDeleteProfile = async (req, res) => {
       return sendError(res, "User not found", 404);
     }
 
-    const token = generateDeleteToken(user._id.toString());
+    const token = generateTempToken(user._id.toString(), "delete-account");
     // Send confirmation email (fire-and-forget)
     sendEmail({
       to: user.email,
@@ -137,11 +137,14 @@ const confirmDeleteProfile = async (req, res) => {
       return sendError(res, "Token is required", 400);
     }
 
-    const payload = verifyDeleteToken(token);
+    const payload = verifyTempToken(token, "delete-account");
     if (!payload) {
       return sendError(res, "Invalid or expired token", 401);
     }
 
+    if (payload.purpose !== "delete-account") {
+      return sendError(res, "Invalid token purpose", 401);
+    }
     const user = await User.findById(payload.userId);
     if (!user) {
       return sendError(res, "User not found", 404);

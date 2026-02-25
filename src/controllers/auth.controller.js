@@ -7,6 +7,10 @@ import {
   setTokenCookies,
   verifyRefreshToken,
 } from "../utils/token.util.js";
+import { generateTempToken, verifyTempToken } from "../utils/token.util.js";
+
+import { forgotPasswordEmail } from "../emails/forgot-password.js";
+import { sendEmail } from "../utils/email.js";
 const COOLDOWN_DAYS = 3;
 
 const canReuseEmail = (deletedAt) => {
@@ -151,6 +155,26 @@ const googleAuth = async (req, res) => {
 
 const forgotPassword = async (req, res) => {
   try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return sendError(res, "User not found", 404);
+    }
+    const token = generateTempToken(user._id.toString(), "forgot-password");
+    // Send confirmation email (fire-and-forget)
+    sendEmail({
+      to: user.email,
+      subject: "Reset your password",
+      html: forgotPasswordEmail({ name: user.name, token }),
+    })
+      .then((res) => console.log("res", res))
+      .catch((err) => console.log("err", err));
+    return sendSuccess(
+      res,
+      null,
+      "An Email has been sent to reset your password.",
+      200,
+    );
   } catch (error) {
     return res
       .status(500)
@@ -168,10 +192,24 @@ const logoutUser = async (req, res) => {
 };
 const resetPassword = async (req, res) => {
   try {
+    const { token, password } = req.body;
+    const payload = verifyTempToken(token, "forgot-password");
+    console.log("payload", payload);
+    if (!payload) {
+      return sendError(res, "Invalid or expired token", 401);
+    }
+    if (payload.purpose !== "forgot-password") {
+      return sendError(res, "Invalid token purpose", 401);
+    }
+    const user = await User.findById(payload.userId);
+    if (!user) {
+      return sendError(res, "User not found", 404);
+    }
+    user.password = await bcrypt.hash(password, 10);
+    await user.save();
+    return sendSuccess(res, null, "Password reset successfully", 200);
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: error?.message || "Internal Server Error" });
+    return sendError(res, error?.message || "Internal Server Error", 500);
   }
 };
 

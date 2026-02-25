@@ -63,18 +63,16 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
   });
 };
 
-export const generateDeleteToken = (userId) => {
-  return jwt.sign(
-    { userId, purpose: "delete-account" },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: "15m" },
-  );
+export const generateTempToken = (userId, purpose) => {
+  return jwt.sign({ userId, purpose }, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: "15m",
+  });
 };
 
-export const verifyDeleteToken = (token) => {
+export const verifyTempToken = (token, purpose) => {
   try {
     const payload = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-    if (payload.purpose !== "delete-account") return null;
+    if (payload.purpose !== purpose) return null;
     return payload;
   } catch {
     return null;

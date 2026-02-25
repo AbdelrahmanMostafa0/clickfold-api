@@ -13,7 +13,6 @@ const createLink = async (req, res) => {
   try {
     const { slug, destination, ogTitle, ogDescription, susPopups, ogMode } =
       req.body;
-    console.log(typeof susPopups);
 
     const linkExists = await Link.findOne({ slug });
     if (linkExists) {
@@ -150,8 +149,6 @@ const getLink = async (req, res) => {
 };
 
 const getUserLinks = async (req, res) => {
-  console.log("sad");
-
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -165,7 +162,6 @@ const getUserLinks = async (req, res) => {
       mostClicked: { clicks: -1 },
     };
     const sort = sortOptions[req.query.sortBy] || sortOptions.newest;
-    console.log(req.query.sortBy);
 
     const [links, total] = await Promise.all([
       Link.find(filter).sort(sort).skip(skip).limit(limit),

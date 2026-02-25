@@ -194,7 +194,6 @@ const resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
     const payload = verifyTempToken(token, "forgot-password");
-    console.log("payload", payload);
     if (!payload) {
       return sendError(res, "Invalid or expired token", 401);
     }

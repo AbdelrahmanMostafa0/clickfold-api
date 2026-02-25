@@ -216,7 +216,18 @@ const redirectLink = async (req, res) => {
     return sendError(res, error.message, 500);
   }
 };
-
+const getLinkOg = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const link = await Link.findOne({ slug, isDeleted: false });
+    if (!link) {
+      return sendError(res, "Link not found", 404);
+    }
+    return sendSuccess(res, link, "OG fetched successfully", 200);
+  } catch (error) {
+    return sendError(res, error.message, 500);
+  }
+};
 const checkSlug = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -282,4 +293,5 @@ export {
   checkSlug,
   updateLink,
   deleteLink,
+  getLinkOg,
 };

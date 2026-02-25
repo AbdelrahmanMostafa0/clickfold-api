@@ -9,6 +9,7 @@ import {
   userlinksStats,
   checkSlug,
   deleteLink,
+  getLinkOg,
 } from "../controllers/link.controller.js";
 import upload from "../middlewares/multer.middleware.js";
 
@@ -22,4 +23,5 @@ router.get("/:slug", getLink);
 router.get("/stats", authMiddleware, userlinksStats);
 router.get("/redirect/:slug", redirectLink);
 router.get("/check-slug/:slug", authMiddleware, checkSlug);
+router.get("/og/:slug", getLinkOg);
 export default router;

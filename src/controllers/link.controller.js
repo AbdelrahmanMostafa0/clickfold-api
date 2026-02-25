@@ -257,7 +257,7 @@ const checkSlug = async (req, res) => {
 const userlinksStats = async (req, res) => {
   try {
     const stats = await Link.aggregate([
-      { $match: { createdBy: req.user.id, isDeleted: false } },
+      { $match: { createdBy: req.user._id } },
       {
         $group: {
           _id: null,
@@ -271,7 +271,6 @@ const userlinksStats = async (req, res) => {
         },
       },
     ]);
-
     const result = stats[0] || {
       activeLinks: 0,
       totalClicks: 0,

@@ -12,15 +12,20 @@ const linkSchema = new Schema(
     clicks: { type: Number, default: 0 },
     susPopups: { type: Boolean, default: false },
     og: {
-      title: { type: String },
-      description: { type: String },
-      image: { type: String },
+      title: { type: String, default: "" },
+      description: { type: String, default: "" },
+      image: { type: String, default: "" },
     },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
     isActive: { type: Boolean, default: true },
     expiresAt: { type: Date, default: null },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
+    ogMode: {
+      type: String,
+      enum: ["custom", "original", "none"],
+      default: "original",
+    },
   },
   { timestamps: true },
 );

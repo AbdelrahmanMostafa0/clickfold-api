@@ -7,16 +7,30 @@ import { UAParser } from "ua-parser-js";
 import Click from "../models/click.model.js";
 import { nanoid } from "nanoid";
 import { formatSlug } from "../utils/link.js";
+import scrapeOG from "../utils/ogFetch.js";
+
 const createLink = async (req, res) => {
   try {
-    const { slug, destination, ogTitle, ogDescription } = req.body;
+    const { slug, destination, ogTitle, ogDescription, susPopups, ogMode } =
+      req.body;
+    console.log(typeof susPopups);
+
     const linkExists = await Link.findOne({ slug });
     if (linkExists) {
-      fs.unlinkSync(req.file.path);
+      if (req.file) fs.unlinkSync(req.file.path);
       return sendError(res, "Slug already exists", 400);
     }
+    if (ogMode === "custom" && !req.file) {
+      return sendError(res, "Image is required for custom OG mode", 400);
+    }
+
+    let og = {
+      title: "",
+      description: "",
+      image: null,
+    };
     let ogImage = null;
-    if (req.file) {
+    if (req.file && ogMode === "custom") {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: "b8lnk/og-preview",
         transformation: {
@@ -27,16 +41,32 @@ const createLink = async (req, res) => {
         },
       });
       ogImage = result.secure_url;
+    }
+    if (req.file) {
       fs.unlinkSync(req.file.path);
+    }
+    switch (ogMode) {
+      case "original":
+        const ogData = await scrapeOG(destination);
+        og = {
+          title: ogData.title,
+          description: ogData.description,
+          image: ogData.image,
+        };
+        break;
+      case "custom":
+        og = { title: ogTitle, description: ogDescription, image: ogImage };
+        break;
+      case "none":
+      default:
+        og = { title: "", description: "", image: "" };
     }
     const link = await Link.create({
       slug: formatSlug(slug),
       destination,
-      og: {
-        title: ogTitle,
-        description: ogDescription,
-        image: ogImage,
-      },
+      og,
+      susPopups: susPopups === "true",
+      ogMode,
       createdBy: req.user._id,
     });
 
@@ -120,9 +150,37 @@ const getLink = async (req, res) => {
 };
 
 const getUserLinks = async (req, res) => {
+  console.log("sad");
+
   try {
-    const links = await Link.find({ createdBy: req.user.id });
-    return sendSuccess(res, links, "Links fetched successfully", 200);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const filter = { createdBy: req.user._id, isDeleted: { $ne: true } };
+
+    const sortOptions = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      mostClicked: { clicks: -1 },
+    };
+    const sort = sortOptions[req.query.sortBy] || sortOptions.newest;
+    console.log(req.query.sortBy);
+
+    const [links, total] = await Promise.all([
+      Link.find(filter).sort(sort).skip(skip).limit(limit),
+      Link.countDocuments(filter),
+    ]);
+
+    return sendSuccess(
+      res,
+      {
+        links,
+        pagination: { total, page, limit, pages: Math.ceil(total / limit) },
+      },
+      "Links fetched successfully",
+      200,
+    );
   } catch (error) {
     return sendError(res, error.message, 500);
   }

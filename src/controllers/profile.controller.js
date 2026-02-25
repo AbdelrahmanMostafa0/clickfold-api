@@ -158,8 +158,8 @@ const confirmDeleteProfile = async (req, res) => {
     user.deletedAt = Date.now();
     await user.save();
 
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
+    // res.clearCookie("accessToken");
+    // res.clearCookie("refreshToken");
 
     return sendSuccess(res, null, "Account deleted successfully", 200);
   } catch (error) {

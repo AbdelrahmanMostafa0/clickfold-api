@@ -3,7 +3,6 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-import connectDB from "./config/db.js";
 import routes from "./routes/index.js";
 import morgan from "morgan";
 import logger from "./utils/logger.js";
@@ -17,7 +16,6 @@ const swaggerDocument = JSON.parse(
 
 dotenv.config();
 
-connectDB();
 const app = express();
 app.use(
   morgan("dev", {
@@ -43,9 +41,6 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/", (req, res) => {
   res.send("LinkPulse backend is running!");
-});
-app.listen(process.env.PORT || 9000, () => {
-  console.log(`Server is running on port ${process.env.PORT || 9000}`);
 });
 
 export default app;

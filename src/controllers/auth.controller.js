@@ -22,7 +22,7 @@ const registerUser = async (req, res) => {
     const { name, email, password } = req.body;
     const validationResult = signupSchema.safeParse({ name, email, password });
     if (!validationResult.success) {
-      return sendError(res, validationResult.error.errors[0].message, 400);
+      return sendError(res, validationResult.error.issues[0].message, 400);
     }
     const user = await User.findOne({ email });
     if (user) {
@@ -58,7 +58,7 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
     const validationResult = loginSchema.safeParse({ email, password });
     if (!validationResult.success) {
-      return sendError(res, validationResult.error.errors[0].message, 400);
+      return sendError(res, validationResult.error.issues[0].message, 400);
     }
     const user = await User.findOne({ email }).select("+password");
     if (!user) {

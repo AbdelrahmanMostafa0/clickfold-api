@@ -282,6 +282,7 @@ const redirectLink = async (req, res) => {
     });
     if (link.isActive) {
       await Link.findByIdAndUpdate(link._id, { $inc: { clicks: 1 } });
+      link.clicks += 1;
     }
     const linkres = link.isActive
       ? link

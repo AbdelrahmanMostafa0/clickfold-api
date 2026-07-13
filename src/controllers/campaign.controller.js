@@ -11,7 +11,7 @@ const createCampaign = async (req, res) => {
   try {
     const validationResult = createCampaignSchema.safeParse(req.body);
     if (!validationResult.success) {
-      return sendError(res, validationResult.error.errors[0].message, 400);
+      return sendError(res, validationResult.error.issues[0].message, 400);
     }
     const { name, description } = validationResult.data;
 
@@ -87,7 +87,7 @@ const updateCampaign = async (req, res) => {
     const { id } = req.params;
     const validationResult = updateCampaignSchema.safeParse(req.body);
     if (!validationResult.success) {
-      return sendError(res, validationResult.error.errors[0].message, 400);
+      return sendError(res, validationResult.error.issues[0].message, 400);
     }
 
     const campaign = await Campaign.findOne({

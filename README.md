@@ -1,6 +1,6 @@
-# b8lnk API
+# LinkPulse API
 
-REST API backend for **b8lnk** -- a modern URL shortener with analytics, custom OG metadata, and user management. Built with Express 5, MongoDB, and deployed on Vercel.
+REST API backend for **LinkPulse** -- a link management platform with campaign grouping, click analytics, custom OG metadata, and user management. Built with Express 5, MongoDB, and deployed on Vercel.
 
 ---
 
@@ -11,9 +11,11 @@ REST API backend for **b8lnk** -- a modern URL shortener with analytics, custom 
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Environment Variables](#environment-variables)
+- [Testing](#testing)
 - [API Reference](#api-reference)
   - [Authentication](#authentication)
   - [Links](#links)
+  - [Campaigns](#campaigns)
   - [Profile](#profile)
   - [Upload](#upload)
 - [Related Repositories](#related-repositories)
@@ -24,8 +26,10 @@ REST API backend for **b8lnk** -- a modern URL shortener with analytics, custom 
 ## Features
 
 - **URL Shortening** -- Create short links with custom or auto-generated slugs.
+- **Campaigns** -- Group links together and track aggregated performance (clicks over time, top countries/devices) per campaign.
 - **Click Analytics** -- Track clicks with geographic location (country, city), device type, OS, browser, and referrer data.
-- **Custom OG Metadata** -- Set custom Open Graph title, description, and image for each link, or auto-fetch from the destination URL.
+- **Custom OG Metadata** -- Set custom Open Graph title, description, and image for each link, or auto-fetch from the destination URL. Served correctly to social crawlers even though real visitors get an instant server-side redirect.
+- **Tags** -- Free-form tags per link for organizing outside of campaigns.
 - **User Authentication** -- Register/login with email and password, or via Google OAuth. JWT-based access and refresh tokens stored in HTTP-only cookies.
 - **Password Recovery** -- Forgot password flow with email-based reset tokens via Resend.
 - **Profile Management** -- Update profile details, change password, upload avatar, and request account deletion with email confirmation.
@@ -34,7 +38,7 @@ REST API backend for **b8lnk** -- a modern URL shortener with analytics, custom 
 - **Request Validation** -- Input validation using Zod schemas.
 - **Swagger Documentation** -- Interactive API docs served at `/api-docs`.
 - **Structured Logging** -- Application logging with Winston, including file-based log output.
-- **Soft Deletes** -- Links and user accounts support soft deletion with timestamps.
+- **Soft Deletes** -- Links, campaigns, and user accounts support soft deletion with timestamps.
 - **Link Expiration** -- Optional expiry dates for short links.
 
 ---
@@ -42,19 +46,20 @@ REST API backend for **b8lnk** -- a modern URL shortener with analytics, custom 
 ## Tech Stack
 
 | Category       | Technology                             |
-| -------------- | -------------------------------------- |
-| Runtime        | Node.js (ES Modules)                   |
-| Framework      | Express 5                              |
-| Database       | MongoDB with Mongoose ODM              |
-| Authentication | JSON Web Tokens (jsonwebtoken), bcrypt |
-| File Storage   | Cloudinary                             |
-| Email          | Resend                                 |
-| Validation     | Zod                                    |
-| Documentation  | Swagger UI Express                     |
-| Logging        | Winston, Morgan                        |
-| Analytics      | geoip-lite, ua-parser-js               |
-| OG Scraping    | open-graph-scraper                     |
-| Deployment     | Vercel (Serverless)                    |
+| -------------- | --------------------------------------- |
+| Runtime        | Node.js (ES Modules)                    |
+| Framework      | Express 5                               |
+| Database       | MongoDB with Mongoose ODM               |
+| Authentication | JSON Web Tokens (jsonwebtoken), bcrypt  |
+| File Storage   | Cloudinary                              |
+| Email          | Resend                                  |
+| Validation     | Zod                                     |
+| Testing        | Vitest, Supertest, mongodb-memory-server |
+| Documentation  | Swagger UI Express                      |
+| Logging        | Winston, Morgan                         |
+| Analytics      | geoip-lite, ua-parser-js                |
+| OG Scraping    | open-graph-scraper                      |
+| Deployment     | Vercel (Serverless)                     |
 
 ---
 
@@ -62,41 +67,52 @@ REST API backend for **b8lnk** -- a modern URL shortener with analytics, custom 
 
 ```
 src/
-  app.js                  # Application entry point
-  swagger.json            # OpenAPI / Swagger spec
+  app.js                    # Express app: middleware + routes (no listen/connect)
+  server.js                 # Entry point: connects to MongoDB, starts the server
+  swagger.json               # OpenAPI / Swagger spec
   config/
-    db.js                 # MongoDB connection setup
+    db.js                   # MongoDB connection setup
   controllers/
-    auth.controller.js    # Register, login, OAuth, password reset
-    link.controller.js    # Link CRUD, redirect, analytics
-    profile.controller.js # Profile management, account deletion
+    auth.controller.js      # Register, login, OAuth, password reset
+    link.controller.js      # Link CRUD, redirect, analytics
+    campaign.controller.js  # Campaign CRUD, aggregated stats
+    profile.controller.js   # Profile management, account deletion
   emails/
-    forgot-password.js    # Forgot password email template
-    delete-account.js     # Account deletion confirmation email
+    forgot-password.js      # Forgot password email template
+    delete-account.js       # Account deletion confirmation email
   middlewares/
-    auth.middleware.js     # JWT authentication guard
-    multer.middleware.js   # File upload handling (Multer)
-    rateLimit.middleware.js# Rate limiting configuration
+    auth.middleware.js      # JWT authentication guard
+    multer.middleware.js    # File upload handling (Multer)
+    rateLimit.middleware.js # Rate limiting configuration
   models/
-    user.model.js         # User schema (name, email, password, Google ID, avatar)
-    link.model.js         # Link schema (slug, destination, OG metadata, expiry)
-    click.model.js        # Click schema (IP, geo, device, browser, referrer)
+    user.model.js           # User schema (name, email, password, Google ID, avatar)
+    link.model.js            # Link schema (slug, destination, campaign, tags, OG metadata, expiry)
+    campaign.model.js        # Campaign schema (name, description, owner, soft delete)
+    click.model.js           # Click schema (IP, geo, device, browser, referrer)
   routes/
-    index.js              # Route aggregator
-    auth.route.js         # /api/auth/*
-    link.route.js         # /api/links/*
-    profile.route.js      # /api/profile/*
-    upload.route.js       # /api/upload/*
+    index.js                # Route aggregator
+    auth.route.js            # /api/auth/*
+    link.route.js             # /api/links/*
+    campaign.route.js         # /api/campaigns/*
+    profile.route.js          # /api/profile/*
+    upload.route.js           # /api/upload/*
   utils/
-    cloudinary.js         # Cloudinary SDK configuration
-    email.js              # Resend email client setup
-    link.js               # Link helper utilities
-    logger.js             # Winston logger configuration
-    ogFetch.js            # OG metadata scraper
-    response.js           # Standardized API response helper
-    token.util.js         # JWT token generation and verification
+    cloudinary.js            # Cloudinary SDK configuration
+    email.js                 # Resend email client setup
+    link.js                  # Link helper utilities
+    logger.js                # Winston logger configuration
+    ogFetch.js                # OG metadata scraper
+    response.js               # Standardized API response helper
+    token.util.js              # JWT token generation and verification
   validators/
-    auth.validator.js     # Zod schemas for auth input validation
+    auth.validator.js         # Zod schemas for auth input validation
+    campaign.validator.js     # Zod schemas for campaign input validation
+tests/
+  setup.js                  # In-memory MongoDB lifecycle for tests
+  helpers.js                 # Auth cookie helpers for authenticated requests
+  auth.test.js                # Register/login coverage
+  links.test.js                # Link creation, slug collisions, redirect/click recording
+  campaigns.test.js             # Campaign CRUD, stats aggregation, unlinking
 ```
 
 ---
@@ -114,8 +130,8 @@ src/
 
 ```bash
 # Clone the repository
-git clone https://github.com/AbdelrahmanMostafa0/b8lnk-api.git
-cd b8lnk-api
+git clone https://github.com/AbdelrahmanMostafa0/linkpulse-api.git
+cd linkpulse-api
 
 # Install dependencies
 npm install
@@ -132,10 +148,11 @@ The server will start on `http://localhost:9000` by default.
 
 ### Available Scripts
 
-| Script        | Command              | Description                 |
-| ------------- | -------------------- | --------------------------- |
-| `npm run dev` | `nodemon src/app.js` | Start with hot-reload (dev) |
-| `npm start`   | `node src/app.js`    | Start in production mode    |
+| Script        | Command                  | Description                  |
+| ------------- | ------------------------- | ----------------------------- |
+| `npm run dev` | `nodemon src/server.js`   | Start with hot-reload (dev)   |
+| `npm start`   | `node src/server.js`      | Start in production mode      |
+| `npm test`    | `vitest run`              | Run the test suite once       |
 
 ---
 
@@ -167,6 +184,18 @@ PORT=9000
 
 ---
 
+## Testing
+
+The test suite spins up an in-memory MongoDB instance (via `mongodb-memory-server`) and exercises the real Express app with Supertest -- no test hits your real database.
+
+```bash
+npm test
+```
+
+Covers: registration/login validation and error paths, link creation and slug collisions, click recording on redirect, and campaign CRUD including aggregated stats and unlinking on delete.
+
+---
+
 ## API Reference
 
 Base URL: `/api`
@@ -176,29 +205,40 @@ Interactive documentation is available at `/api-docs` (Swagger UI).
 ### Authentication
 
 | Method | Endpoint                    | Auth | Description                    |
-| ------ | --------------------------- | ---- | ------------------------------ |
-| POST   | `/api/auth/register`        | No   | Register a new user            |
-| POST   | `/api/auth/login`           | No   | Login with email and password  |
-| POST   | `/api/auth/google`          | No   | Authenticate via Google OAuth  |
-| POST   | `/api/auth/refresh`         | No   | Refresh the access token       |
-| POST   | `/api/auth/logout`          | Yes  | Logout and clear tokens        |
-| POST   | `/api/auth/forgot-password` | No   | Request a password reset email |
-| POST   | `/api/auth/reset-password`  | No   | Reset password with token      |
+| ------ | ---------------------------- | ---- | -------------------------------- |
+| POST   | `/api/auth/register`         | No   | Register a new user             |
+| POST   | `/api/auth/login`             | No   | Login with email and password   |
+| POST   | `/api/auth/google`             | No   | Authenticate via Google OAuth   |
+| POST   | `/api/auth/refresh`             | No   | Refresh the access token        |
+| POST   | `/api/auth/logout`               | Yes  | Logout and clear tokens         |
+| POST   | `/api/auth/forgot-password`       | No   | Request a password reset email  |
+| POST   | `/api/auth/reset-password`         | No   | Reset password with token       |
 
 ### Links
 
 | Method | Endpoint                      | Auth | Description                         |
-| ------ | ----------------------------- | ---- | ----------------------------------- |
-| POST   | `/api/links`                  | Yes  | Create a new short link             |
+| ------ | ----------------------------- | ---- | ------------------------------------ |
+| POST   | `/api/links`                  | Yes  | Create a new short link (optional `campaignId`, `tags`) |
 | GET    | `/api/links`                  | Yes  | List all links for the current user |
-| GET    | `/api/links/stats`            | Yes  | Get aggregated link statistics      |
+| GET    | `/api/links/stats`            | Yes  | Aggregated stats: totals, top links, clicks-by-date, top countries/devices/referrers |
 | GET    | `/api/links/analytics/:slug`  | Yes  | Get detailed analytics for a link   |
-| GET    | `/api/links/redirect/:slug`   | No   | Redirect to the destination URL     |
+| GET    | `/api/links/redirect/:slug`   | No   | Records a click and returns the link (used by the frontend's server-side redirect) |
 | GET    | `/api/links/check-slug/:slug` | Yes  | Check if a slug is available        |
 | GET    | `/api/links/og/:slug`         | No   | Get OG metadata for a link          |
 | GET    | `/api/links/:slug`            | Yes  | Get a specific link by slug         |
 | PUT    | `/api/links/:slug`            | Yes  | Update a link                       |
 | DELETE | `/api/links/:slug`            | Yes  | Soft-delete a link                  |
+
+### Campaigns
+
+| Method | Endpoint                      | Auth | Description                            |
+| ------ | ----------------------------- | ---- | ---------------------------------------- |
+| POST   | `/api/campaigns`               | Yes  | Create a new campaign                    |
+| GET    | `/api/campaigns`                | Yes  | List campaigns, each with `linksCount`/`totalClicks` |
+| GET    | `/api/campaigns/:id`             | Yes  | Get a campaign by id                     |
+| PUT    | `/api/campaigns/:id`              | Yes  | Update a campaign                        |
+| DELETE | `/api/campaigns/:id`               | Yes  | Soft-delete a campaign (unlinks its links, doesn't delete them) |
+| GET    | `/api/campaigns/:id/stats`          | Yes  | Aggregated analytics across the campaign's links |
 
 ### Profile
 
@@ -213,7 +253,7 @@ Interactive documentation is available at `/api-docs` (Swagger UI).
 
 ## Related Repositories
 
-- **Frontend** -- [b8lnk](https://github.com/AbdelrahmanMostafa0/b8lnk)
+- **Frontend** -- [linkpulse](https://github.com/AbdelrahmanMostafa0/linkpulse)
 
 ---
 

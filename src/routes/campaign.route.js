@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { csrfProtection } from "../middlewares/csrf.middleware.js";
 import {
   createCampaign,
   getCampaigns,
@@ -12,6 +13,7 @@ import {
 const router = Router();
 
 router.use(authMiddleware);
+router.use(csrfProtection);
 
 router.post("/", createCampaign);
 router.get("/", getCampaigns);

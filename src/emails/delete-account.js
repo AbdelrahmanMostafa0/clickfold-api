@@ -20,7 +20,7 @@ export const deleteAccountEmail = ({ name = "there", token = "" }) => `
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" style="padding-bottom:8px;">
-                    <p style="color:#f0f0f0;font-size:22px;font-weight:700;letter-spacing:-0.5px;margin:8px 0 0;">LinkPulse</p>
+                    <p style="color:#f0f0f0;font-size:22px;font-weight:700;letter-spacing:-0.5px;margin:8px 0 0;">Clickfold</p>
                   </td>
                 </tr>
               </table>
@@ -49,7 +49,7 @@ export const deleteAccountEmail = ({ name = "there", token = "" }) => `
                   <td>
                     <p style="color:#a0a0a0;font-size:15px;line-height:1.6;margin:0 0 12px;">Hi ${name},</p>
                     <p style="color:#a0a0a0;font-size:15px;line-height:1.6;margin:0 0 12px;">
-                      We received a request to delete your <strong>LinkPulse</strong> account.
+                      We received a request to delete your <strong>Clickfold</strong> account.
                       This action is permanent &mdash; all your links and data will be removed.
                     </p>
                     <p style="color:#a0a0a0;font-size:15px;line-height:1.6;margin:0 0 12px;">
@@ -64,7 +64,7 @@ export const deleteAccountEmail = ({ name = "there", token = "" }) => `
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td align="center" style="padding:28px 0;">
-                    <a href="https://linkpulse.vercel.app/delete-account/${token}"
+                    <a href="https://clickfold.vercel.app/delete-account/${token}"
                        style="background-color:#ff2d2d;color:#ffffff;font-size:15px;font-weight:600;padding:12px 32px;border-radius:8px;text-decoration:none;display:inline-block;">
                       Delete My Account
                     </a>
@@ -97,7 +97,7 @@ export const deleteAccountEmail = ({ name = "there", token = "" }) => `
                 <tr>
                   <td align="center">
                     <p style="color:#555;font-size:12px;text-align:center;margin:0;">
-                      &copy; 2026 LinkPulse &middot; You received this because a deletion was requested for your account.
+                      &copy; 2026 Clickfold &middot; You received this because a deletion was requested for your account.
                     </p>
                   </td>
                 </tr>

@@ -1,6 +1,6 @@
-# LinkPulse API
+# Clickfold API
 
-REST API backend for **LinkPulse** -- a link management platform with campaign grouping, click analytics, custom OG metadata, and user management. Built with Express 5, MongoDB, and deployed on Vercel.
+REST API backend for **Clickfold** -- a link management platform with campaign grouping, click analytics, custom OG metadata, and user management. Built with Express 5, MongoDB, and deployed on Vercel.
 
 ---
 
@@ -180,6 +180,9 @@ RESEND_API_KEY=<your-resend-api-key>
 
 # Server
 PORT=9000
+
+# Comma-separated list of allowed frontend origins (no trailing slashes)
+CORS_ORIGINS=http://localhost:3000,https://clickfold.vercel.app
 ```
 
 ---

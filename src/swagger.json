@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "LinkPulse API",
+    "title": "Clickfold API",
     "version": "1.0.0",
-    "description": "API documentation for LinkPulse"
+    "description": "API documentation for Clickfold"
   },
   "servers": [
     {

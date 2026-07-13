@@ -1,5 +1,4 @@
 import express from "express";
-import bodyParser from "body-parser";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
@@ -16,6 +15,11 @@ const swaggerDocument = JSON.parse(
 
 dotenv.config();
 
+const defaultOrigins = ["http://localhost:3000", "http://localhost:3001"];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
+  : defaultOrigins;
+
 const app = express();
 app.use(
   morgan("dev", {
@@ -24,23 +28,28 @@ app.use(
 );
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "https://linkpulse.vercel.app",
-    ],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
 app.use(cookieParser());
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(generalLimiter);
 
 app.use("/api", routes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/", (req, res) => {
-  res.send("LinkPulse backend is running!");
+  res.send("Clickfold backend is running!");
+});
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  logger.error(err.stack || err.message);
+  const statusCode = err.name === "MulterError" ? 400 : err.statusCode || 500;
+  res
+    .status(statusCode)
+    .json({ success: false, message: err.message || "Internal Server Error" });
 });
 
 export default app;

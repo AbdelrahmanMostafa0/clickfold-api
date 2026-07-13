@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 const parseExpiry = (expiry) => {
   const unit = expiry.slice(-1);
   const value = parseInt(expiry.slice(0, -1));
@@ -61,12 +62,22 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
     sameSite: "none",
     maxAge: parseExpiry(process.env.REFRESH_TOKEN_EXPIRY || "7d"),
   });
+  // Non-httpOnly so the frontend can read it and echo it back as a
+  // header on mutating requests (double-submit CSRF protection).
+  res.cookie("csrfToken", crypto.randomBytes(32).toString("hex"), {
+    httpOnly: false,
+    secure: true,
+    sameSite: "none",
+    maxAge: parseExpiry(process.env.REFRESH_TOKEN_EXPIRY || "7d"),
+  });
 };
 
-export const generateTempToken = (userId, purpose) => {
-  return jwt.sign({ userId, purpose }, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: "15m",
-  });
+export const generateTempToken = (userId, purpose, extra = {}) => {
+  return jwt.sign(
+    { userId, purpose, ...extra },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "15m" },
+  );
 };
 
 export const verifyTempToken = (token, purpose) => {

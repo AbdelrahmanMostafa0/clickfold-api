@@ -9,7 +9,7 @@ let mongod;
 
 beforeAll(async () => {
   mongod = await MongoMemoryServer.create();
-  await mongoose.connect(mongod.getUri(), { dbName: "linkpulse-test" });
+  await mongoose.connect(mongod.getUri(), { dbName: "clickfold-test" });
 });
 
 afterEach(async () => {

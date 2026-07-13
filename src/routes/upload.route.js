@@ -1,10 +1,12 @@
 import { Router } from "express";
 import upload from "../middlewares/multer.middleware.js";
 import cloudinary from "../utils/cloudinary.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { csrfProtection } from "../middlewares/csrf.middleware.js";
 
 const router = Router();
 
-router.post("/", upload.single("file"), async (req, res) => {
+router.post("/", authMiddleware, csrfProtection, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res
@@ -13,7 +15,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "linkpulse/uploads",
+      folder: "clickfold/uploads",
       transformation: {
         width: 1200,
         height: 630,

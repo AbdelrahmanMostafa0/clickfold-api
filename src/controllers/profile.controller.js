@@ -36,7 +36,7 @@ const updateProfile = async (req, res) => {
 
     if (avatar) {
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "linkpulse/avatars",
+        folder: "clickfold/avatars",
         transformation: {
           width: 200,
           height: 200,
@@ -61,7 +61,25 @@ const updatePassword = async (req, res) => {
     if (!user) {
       return sendError(res, "User not found", 404);
     }
+    if (
+      typeof newPassword !== "string" ||
+      newPassword.length < 8 ||
+      newPassword.length > 30
+    ) {
+      return sendError(
+        res,
+        "New password must be between 8 and 30 characters",
+        400,
+      );
+    }
     const userPass = await User.findById(user._id).select("password");
+    if (!userPass.password) {
+      return sendError(
+        res,
+        "This account signed up with Google and has no password to change",
+        400,
+      );
+    }
     const isPasswordValid = await bcrypt.compare(password, userPass.password);
     if (!isPasswordValid) {
       return sendError(res, "Invalid password", 400);
@@ -112,7 +130,7 @@ const requestDeleteProfile = async (req, res) => {
     // Send confirmation email (fire-and-forget)
     sendEmail({
       to: user.email,
-      subject: "Confirm your LinkPulse account deletion",
+      subject: "Confirm your Clickfold account deletion",
       html: deleteAccountEmail({ name: user.name, token }),
     })
       .then((res) => console.log("res", res))

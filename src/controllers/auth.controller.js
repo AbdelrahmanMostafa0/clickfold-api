@@ -61,19 +61,12 @@ const loginUser = async (req, res) => {
       return sendError(res, validationResult.error.issues[0].message, 400);
     }
     const user = await User.findOne({ email }).select("+password");
-    if (!user) {
-      return sendError(res, "User not found", 404);
-    }
-    if (user.isDeleted) {
-      return sendError(
-        res,
-        "Account is deleted. Please create a new account.",
-        400,
-      );
+    if (!user || user.isDeleted || !user.password) {
+      return sendError(res, "Invalid email or password", 401);
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return sendError(res, "Invalid password", 401);
+      return sendError(res, "Invalid email or password", 401);
     }
     const { accessToken, refreshToken } = generateTokens({ id: user._id });
     setTokenCookies(res, accessToken, refreshToken);
@@ -153,28 +146,27 @@ const googleAuth = async (req, res) => {
   }
 };
 
+const GENERIC_FORGOT_PASSWORD_MESSAGE =
+  "If an account exists for that email, a reset link has been sent.";
+
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
-    if (!user) {
-      return sendError(res, "User not found", 404);
+    if (user && !user.isDeleted && user.password) {
+      const token = generateTempToken(user._id.toString(), "forgot-password", {
+        tokenVersion: user.tokenVersion,
+      });
+      // Send confirmation email (fire-and-forget)
+      sendEmail({
+        to: user.email,
+        subject: "Reset your password",
+        html: forgotPasswordEmail({ name: user.name, token }),
+      })
+        .then((res) => console.log("res", res))
+        .catch((err) => console.log("err", err));
     }
-    const token = generateTempToken(user._id.toString(), "forgot-password");
-    // Send confirmation email (fire-and-forget)
-    sendEmail({
-      to: user.email,
-      subject: "Reset your password",
-      html: forgotPasswordEmail({ name: user.name, token }),
-    })
-      .then((res) => console.log("res", res))
-      .catch((err) => console.log("err", err));
-    return sendSuccess(
-      res,
-      null,
-      "An Email has been sent to reset your password.",
-      200,
-    );
+    return sendSuccess(res, null, GENERIC_FORGOT_PASSWORD_MESSAGE, 200);
   } catch (error) {
     return res
       .status(500)
@@ -185,6 +177,7 @@ const logoutUser = async (req, res) => {
   try {
     res.clearCookie("accessToken");
     res.clearCookie("refreshToken");
+    res.clearCookie("csrfToken");
     return sendSuccess(res, null, "User logged out successfully", 200);
   } catch (error) {
     return sendError(res, error?.message || "Internal Server Error", 500);
@@ -193,6 +186,17 @@ const logoutUser = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
+    if (
+      typeof password !== "string" ||
+      password.length < 8 ||
+      password.length > 30
+    ) {
+      return sendError(
+        res,
+        "Password must be between 8 and 30 characters",
+        400,
+      );
+    }
     const payload = verifyTempToken(token, "forgot-password");
     if (!payload) {
       return sendError(res, "Invalid or expired token", 401);
@@ -204,7 +208,11 @@ const resetPassword = async (req, res) => {
     if (!user) {
       return sendError(res, "User not found", 404);
     }
+    if (payload.tokenVersion !== user.tokenVersion) {
+      return sendError(res, "Invalid or expired token", 401);
+    }
     user.password = await bcrypt.hash(password, 10);
+    user.tokenVersion += 1;
     await user.save();
     return sendSuccess(res, null, "Password reset successfully", 200);
   } catch (error) {

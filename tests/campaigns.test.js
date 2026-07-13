@@ -66,9 +66,15 @@ describe("Campaigns", () => {
       .field("ogMode", "none")
       .field("campaignId", campaignId);
 
-    await request(app).get("/api/links/redirect/camp-link-1");
-    await request(app).get("/api/links/redirect/camp-link-1");
-    await request(app).get("/api/links/redirect/camp-link-2");
+    await request(app)
+      .get("/api/links/redirect/camp-link-1")
+      .set("X-Forwarded-For", "203.0.113.10");
+    await request(app)
+      .get("/api/links/redirect/camp-link-1")
+      .set("X-Forwarded-For", "203.0.113.11");
+    await request(app)
+      .get("/api/links/redirect/camp-link-2")
+      .set("X-Forwarded-For", "203.0.113.12");
 
     const stats = await client.get(`/api/campaigns/${campaignId}/stats`);
     expect(stats.status).toBe(200);

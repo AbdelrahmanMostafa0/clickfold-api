@@ -60,7 +60,7 @@ describe("POST /api/links", () => {
 });
 
 describe("GET /api/links/redirect/:slug", () => {
-  it("returns the link and increments clicks on each hit", async () => {
+  it("returns the link and increments clicks per distinct visitor", async () => {
     const client = await loggedIn();
     await client
       .post("/api/links")
@@ -68,13 +68,36 @@ describe("GET /api/links/redirect/:slug", () => {
       .field("destination", "https://example.com/target")
       .field("ogMode", "none");
 
-    const first = await request(app).get("/api/links/redirect/click-me");
+    const first = await request(app)
+      .get("/api/links/redirect/click-me")
+      .set("X-Forwarded-For", "203.0.113.1");
     expect(first.status).toBe(200);
     expect(first.body.data.destination).toBe("https://example.com/target");
     expect(first.body.data.clicks).toBe(1);
 
-    const second = await request(app).get("/api/links/redirect/click-me");
+    const second = await request(app)
+      .get("/api/links/redirect/click-me")
+      .set("X-Forwarded-For", "203.0.113.2");
     expect(second.body.data.clicks).toBe(2);
+  });
+
+  it("doesn't double-count rapid repeat hits from the same visitor", async () => {
+    const client = await loggedIn();
+    await client
+      .post("/api/links")
+      .field("slug", "spam-me")
+      .field("destination", "https://example.com/target")
+      .field("ogMode", "none");
+
+    const first = await request(app)
+      .get("/api/links/redirect/spam-me")
+      .set("X-Forwarded-For", "198.51.100.7");
+    expect(first.body.data.clicks).toBe(1);
+
+    const second = await request(app)
+      .get("/api/links/redirect/spam-me")
+      .set("X-Forwarded-For", "198.51.100.7");
+    expect(second.body.data.clicks).toBe(1);
   });
 
   it("returns 404 for an unknown slug", async () => {

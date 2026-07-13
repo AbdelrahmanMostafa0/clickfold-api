@@ -7,4 +7,9 @@ const formatSlug = (slug = "") => {
   return formattedSlug;
 };
 
-export { formatSlug };
+const BOT_UA_PATTERN =
+  /bot|crawl|spider|facebookexternalhit|Twitterbot|Slackbot|Discordbot|LinkedInBot|TelegramBot|WhatsApp|SkypeUriPreview|Applebot|Pinterest|vkShare|redditbot/i;
+
+const isBotUserAgent = (userAgent = "") => BOT_UA_PATTERN.test(userAgent);
+
+export { formatSlug, isBotUserAgent };

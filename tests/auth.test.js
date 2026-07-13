@@ -65,12 +65,13 @@ describe("POST /api/auth/login", () => {
     expect(res.status).toBe(401);
   });
 
-  it("rejects a nonexistent user", async () => {
+  it("rejects a nonexistent user without revealing the account doesn't exist", async () => {
     const res = await request(app).post("/api/auth/login").send({
       email: "nobody@example.com",
       password: "whatever123",
     });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe("Invalid email or password");
   });
 });

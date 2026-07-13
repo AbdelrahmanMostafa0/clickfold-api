@@ -3,12 +3,17 @@ import Campaign from "../models/campaign.model.js";
 import fs from "fs";
 import { sendSuccess, sendError } from "../utils/response.js";
 import cloudinary from "../utils/cloudinary.js";
-import geoip from "geoip-lite";
 import { UAParser } from "ua-parser-js";
 import Click from "../models/click.model.js";
+import ClickDedup from "../models/clickDedup.model.js";
 import { nanoid } from "nanoid";
-import { formatSlug } from "../utils/link.js";
+import { formatSlug, isBotUserAgent } from "../utils/link.js";
 import scrapeOG from "../utils/ogFetch.js";
+import logger from "../utils/logger.js";
+import {
+  createLinkSchema,
+  updateLinkSchema,
+} from "../validators/link.validator.js";
 
 const parseTags = (tags) => {
   if (!tags) return [];
@@ -34,11 +39,20 @@ const resolveCampaignId = async (campaignId, userId) => {
 
 const createLink = async (req, res) => {
   try {
+    const validationResult = createLinkSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return sendError(res, validationResult.error.issues[0].message, 400);
+    }
     const { slug, destination, ogTitle, ogDescription, ogMode, tags } =
-      req.body;
-    const campaignId = req.body.campaignId || null;
+      validationResult.data;
+    const campaignId = validationResult.data.campaignId || null;
+    const formattedSlug = formatSlug(slug);
 
-    const linkExists = await Link.findOne({ slug });
+    const linkExists = await Link.findOne({
+      slug: formattedSlug,
+      isDeleted: { $ne: true },
+    });
     if (linkExists) {
       if (req.file) fs.unlinkSync(req.file.path);
       return sendError(res, "Slug already exists", 400);
@@ -63,7 +77,7 @@ const createLink = async (req, res) => {
     let ogImage = null;
     if (req.file && ogMode === "custom") {
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "linkpulse/og-preview",
+        folder: "clickfold/og-preview",
         transformation: {
           width: 1200,
           height: 630,
@@ -93,7 +107,7 @@ const createLink = async (req, res) => {
         og = { title: "", description: "", image: "" };
     }
     const link = await Link.create({
-      slug: formatSlug(slug),
+      slug: formattedSlug,
       destination,
       og,
       ogMode,
@@ -104,6 +118,9 @@ const createLink = async (req, res) => {
 
     return sendSuccess(res, link, "Link created successfully", 201);
   } catch (error) {
+    if (error.code === 11000) {
+      return sendError(res, "Slug already exists", 400);
+    }
     return sendError(res, error.message, 500);
   }
 };
@@ -112,8 +129,18 @@ const updateLink = async (req, res) => {
   try {
     const { slug } = req.params;
     const link = await Link.findOne({ slug, isDeleted: { $ne: true } });
+    if (!link) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return sendError(res, "Link not found", 404);
+    }
     if (link.createdBy.toString() !== req.user._id.toString()) {
+      if (req.file) fs.unlinkSync(req.file.path);
       return sendError(res, "Unauthorized", 401);
+    }
+    const validationResult = updateLinkSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return sendError(res, validationResult.error.issues[0].message, 400);
     }
     const {
       slug: newSlug,
@@ -123,11 +150,18 @@ const updateLink = async (req, res) => {
       ogImage: ogImageString,
       ogMode,
       tags,
-    } = req.body;
-    const campaignId = req.body.campaignId || null;
-    if (!link) {
-      if (req.file) fs.unlinkSync(req.file.path);
-      return sendError(res, "Link not found", 404);
+    } = validationResult.data;
+    const campaignId = validationResult.data.campaignId || null;
+    const formattedNewSlug = formatSlug(newSlug);
+    if (formattedNewSlug !== link.slug) {
+      const slugTaken = await Link.findOne({
+        slug: formattedNewSlug,
+        isDeleted: { $ne: true },
+      });
+      if (slugTaken) {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return sendError(res, "Slug already exists", 400);
+      }
     }
     let resolvedCampaignId;
     try {
@@ -140,7 +174,7 @@ const updateLink = async (req, res) => {
     if (req.file) {
       // User uploaded a file — upload to Cloudinary
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "linkpulse/og-preview",
+        folder: "clickfold/og-preview",
         transformation: {
           width: 1200,
           height: 630,
@@ -174,7 +208,7 @@ const updateLink = async (req, res) => {
     const updatedLink = await Link.findByIdAndUpdate(
       link._id,
       {
-        slug: formatSlug(newSlug),
+        slug: formattedNewSlug,
         destination,
         og,
         ogMode,
@@ -185,6 +219,9 @@ const updateLink = async (req, res) => {
     );
     return sendSuccess(res, updatedLink, "Link updated successfully", 200);
   } catch (error) {
+    if (error.code === 11000) {
+      return sendError(res, "Slug already exists", 400);
+    }
     return sendError(res, error.message, 500);
   }
 };
@@ -213,7 +250,10 @@ const deleteLink = async (req, res) => {
 const getLink = async (req, res) => {
   try {
     const { slug } = req.params;
-    const link = await Link.findOne({ slug });
+    const link = await Link.findOne({ slug, isDeleted: { $ne: true } });
+    if (!link) {
+      return sendError(res, "Link not found", 404);
+    }
     if (link.createdBy.toString() !== req.user._id.toString()) {
       return sendError(res, "Unauthorized", 401);
     }
@@ -257,6 +297,43 @@ const getUserLinks = async (req, res) => {
   }
 };
 
+// Runs after the redirect response is already sent — geoip/UA parsing and
+// the Click insert shouldn't add latency to a real visitor's redirect.
+const recordClickAnalytics = async ({
+  linkId,
+  ip,
+  userAgent,
+  referer,
+  vercelCountry,
+  vercelCity,
+}) => {
+  let country = vercelCountry;
+  let city = vercelCity ? decodeURIComponent(vercelCity) : undefined;
+
+  if (!country) {
+    // Only pulls in geoip-lite's ~130MB dataset when Vercel's geo headers
+    // aren't present (i.e. local dev) — on Vercel this branch never runs.
+    const { default: geoip } = await import("geoip-lite");
+    const geo = geoip.lookup(ip);
+    country = geo?.country;
+    city = geo?.city;
+  }
+
+  const parser = new UAParser(userAgent);
+  const ua = parser.getResult();
+
+  await Click.create({
+    link: linkId,
+    ip,
+    country: country || "Unknown",
+    city: city || "Unknown",
+    device: ua.device.type || "desktop",
+    os: ua.os.name,
+    browser: ua.browser.name,
+    referer,
+  });
+};
+
 const redirectLink = async (req, res) => {
   try {
     const { slug } = req.params;
@@ -264,30 +341,58 @@ const redirectLink = async (req, res) => {
     if (!link) {
       return sendError(res, "Link not found", 404);
     }
-    const ip =
-      req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
-    const geo = geoip.lookup(ip);
-    const parser = new UAParser(req.headers["user-agent"]);
-    const ua = parser.getResult();
-    await Click.create({
-      link: link._id,
-      ip,
-      country: geo?.country || "Unknown",
-      city: geo?.city || "Unknown",
-      device: ua.device.type || "desktop",
-      os: ua.os.name,
-      browser: ua.browser.name,
-      referer: req.headers.referer || null,
-    });
-    if (link.isActive) {
-      await Link.findByIdAndUpdate(link._id, { $inc: { clicks: 1 } });
-      link.clicks += 1;
+    const isExpired = link.expiresAt ? link.expiresAt < new Date() : false;
+    const isLive = link.isActive && !isExpired;
+
+    if (!isLive) {
+      return sendSuccess(
+        res,
+        { isActive: false, _id: link._id },
+        "Link fetched successfully",
+        200,
+      );
     }
-    const linkres = link.isActive
-      ? link
-      : { isActive: false, _id: link._id };
-    return sendSuccess(res, linkres, "Link fetched successfully", 200);
+
+    const ip =
+      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+      req.socket.remoteAddress;
+    const userAgent = req.headers["user-agent"] || "";
+
+    let updatedLink = link;
+
+    if (!isBotUserAgent(userAgent)) {
+      let alreadySeen = false;
+      try {
+        await ClickDedup.create({ key: `${link._id}:${ip}` });
+      } catch (err) {
+        if (err.code === 11000) {
+          alreadySeen = true;
+        } else {
+          throw err;
+        }
+      }
+
+      if (!alreadySeen) {
+        updatedLink = await Link.findByIdAndUpdate(
+          link._id,
+          { $inc: { clicks: 1 } },
+          { new: true },
+        );
+        recordClickAnalytics({
+          linkId: link._id,
+          ip,
+          userAgent,
+          referer: req.headers.referer || null,
+          vercelCountry: req.headers["x-vercel-ip-country"],
+          vercelCity: req.headers["x-vercel-ip-city"],
+        }).catch((err) =>
+          logger.error(`Failed to record click analytics: ${err.message}`),
+        );
+      }
+    }
+
+    return sendSuccess(res, updatedLink, "Link fetched successfully", 200);
   } catch (error) {
     return sendError(res, error.message, 500);
   }

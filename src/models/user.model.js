@@ -37,6 +37,12 @@ const userSchema = new Schema(
       enum: ["email", "google"],
       default: "email",
     },
+    // Bumped on every successful password reset so any other outstanding
+    // reset tokens (and the one just used) are invalidated.
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );

@@ -13,7 +13,9 @@ const getProfile = async (req, res) => {
     if (!user) {
       return sendError(res, "User not found", 404);
     }
-    return sendSuccess(res, user, "Profile fetched successfully", 200);
+    return sendSuccess(res, user, "Profile fetched successfully", 200, {
+      csrfToken: req.cookies?.csrfToken,
+    });
   } catch (error) {
     return sendError(res, error?.message || "Internal Server Error", 500);
   }

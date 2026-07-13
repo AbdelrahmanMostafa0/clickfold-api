@@ -62,14 +62,18 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
     sameSite: "none",
     maxAge: parseExpiry(process.env.REFRESH_TOKEN_EXPIRY || "7d"),
   });
-  // Non-httpOnly so the frontend can read it and echo it back as a
-  // header on mutating requests (double-submit CSRF protection).
-  res.cookie("csrfToken", crypto.randomBytes(32).toString("hex"), {
+  // Cookie is cross-site (frontend/API on different apex domains), so
+  // document.cookie can't read it; also returned in the response body
+  // (see callers) for the frontend to hold in memory and echo back as
+  // the x-csrf-token header (double-submit CSRF protection).
+  const csrfToken = crypto.randomBytes(32).toString("hex");
+  res.cookie("csrfToken", csrfToken, {
     httpOnly: false,
     secure: true,
     sameSite: "none",
     maxAge: parseExpiry(process.env.REFRESH_TOKEN_EXPIRY || "7d"),
   });
+  return csrfToken;
 };
 
 export const generateTempToken = (userId, purpose, extra = {}) => {

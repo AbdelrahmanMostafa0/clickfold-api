@@ -41,13 +41,15 @@ const registerUser = async (req, res) => {
       password: hashedPassword,
     });
     const { accessToken, refreshToken } = generateTokens({ id: newUser._id });
-    setTokenCookies(res, accessToken, refreshToken);
+    const csrfToken = setTokenCookies(res, accessToken, refreshToken);
 
     // Remove password from response
     const userResponse = newUser.toObject();
     delete userResponse.password;
 
-    return sendSuccess(res, userResponse, "User registered successfully", 201);
+    return sendSuccess(res, userResponse, "User registered successfully", 201, {
+      csrfToken,
+    });
   } catch (error) {
     return sendError(res, error?.message || "Internal Server Error", 500);
   }
@@ -69,13 +71,15 @@ const loginUser = async (req, res) => {
       return sendError(res, "Invalid email or password", 401);
     }
     const { accessToken, refreshToken } = generateTokens({ id: user._id });
-    setTokenCookies(res, accessToken, refreshToken);
+    const csrfToken = setTokenCookies(res, accessToken, refreshToken);
 
     // Remove password from response
     const userResponse = user.toObject();
     delete userResponse.password;
 
-    return sendSuccess(res, userResponse, "User logged in successfully", 200);
+    return sendSuccess(res, userResponse, "User logged in successfully", 200, {
+      csrfToken,
+    });
   } catch (error) {
     return sendError(res, error?.message || "Internal Server Error", 500);
   }
@@ -91,8 +95,8 @@ const refreshAccessToken = async (req, res) => {
     if (!user) return sendError(res, "Unauthorized", 401);
 
     const { accessToken, refreshToken } = generateTokens({ id: user._id });
-    setTokenCookies(res, accessToken, refreshToken);
-    return sendSuccess(res, null, "Tokens refreshed", 200);
+    const csrfToken = setTokenCookies(res, accessToken, refreshToken);
+    return sendSuccess(res, null, "Tokens refreshed", 200, { csrfToken });
   } catch (error) {
     return sendError(res, "Unauthorized", 401);
   }
@@ -139,8 +143,10 @@ const googleAuth = async (req, res) => {
       await user.save();
     }
     const { accessToken, refreshToken } = generateTokens({ id: user._id });
-    setTokenCookies(res, accessToken, refreshToken);
-    return sendSuccess(res, user, "User logged in successfully", 200);
+    const csrfToken = setTokenCookies(res, accessToken, refreshToken);
+    return sendSuccess(res, user, "User logged in successfully", 200, {
+      csrfToken,
+    });
   } catch (error) {
     return sendError(res, error?.message || "Internal Server Error", 500);
   }

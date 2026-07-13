@@ -13,7 +13,7 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "b8lnk/uploads",
+      folder: "linkpulse/uploads",
       transformation: {
         width: 1200,
         height: 630,

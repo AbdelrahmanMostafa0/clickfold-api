@@ -11,8 +11,7 @@ import scrapeOG from "../utils/ogFetch.js";
 
 const createLink = async (req, res) => {
   try {
-    const { slug, destination, ogTitle, ogDescription, susPopups, ogMode } =
-      req.body;
+    const { slug, destination, ogTitle, ogDescription, ogMode } = req.body;
 
     const linkExists = await Link.findOne({ slug });
     if (linkExists) {
@@ -31,7 +30,7 @@ const createLink = async (req, res) => {
     let ogImage = null;
     if (req.file && ogMode === "custom") {
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "b8lnk/og-preview",
+        folder: "linkpulse/og-preview",
         transformation: {
           width: 1200,
           height: 630,
@@ -64,7 +63,6 @@ const createLink = async (req, res) => {
       slug: formatSlug(slug),
       destination,
       og,
-      susPopups: susPopups === "true",
       ogMode,
       createdBy: req.user._id,
     });
@@ -89,7 +87,6 @@ const updateLink = async (req, res) => {
       ogDescription,
       ogImage: ogImageString,
       ogMode,
-      susPopups,
     } = req.body;
     if (!link) {
       if (req.file) fs.unlinkSync(req.file.path);
@@ -99,7 +96,7 @@ const updateLink = async (req, res) => {
     if (req.file) {
       // User uploaded a file — upload to Cloudinary
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "b8lnk/og-preview",
+        folder: "linkpulse/og-preview",
         transformation: {
           width: 1200,
           height: 630,
@@ -136,7 +133,6 @@ const updateLink = async (req, res) => {
         slug: formatSlug(newSlug),
         destination,
         og,
-        susPopups: susPopups === "true",
         ogMode,
       },
       { new: true },
@@ -243,7 +239,7 @@ const redirectLink = async (req, res) => {
     }
     const linkres = link.isActive
       ? link
-      : { isActive: false, susPopups: false, _id: link._id };
+      : { isActive: false, _id: link._id };
     return sendSuccess(res, linkres, "Link fetched successfully", 200);
   } catch (error) {
     return sendError(res, error.message, 500);

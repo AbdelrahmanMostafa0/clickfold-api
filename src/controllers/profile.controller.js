@@ -36,7 +36,7 @@ const updateProfile = async (req, res) => {
 
     if (avatar) {
       const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: "b8lnk/avatars",
+        folder: "linkpulse/avatars",
         transformation: {
           width: 200,
           height: 200,
@@ -84,7 +84,7 @@ const updateAvatar = async (req, res) => {
       return sendError(res, "Avatar not found", 400);
     }
     const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "b8lnk/avatars",
+      folder: "linkpulse/avatars",
       transformation: {
         width: 200,
         height: 200,
@@ -112,7 +112,7 @@ const requestDeleteProfile = async (req, res) => {
     // Send confirmation email (fire-and-forget)
     sendEmail({
       to: user.email,
-      subject: "Confirm your b8lnk account deletion",
+      subject: "Confirm your LinkPulse account deletion",
       html: deleteAccountEmail({ name: user.name, token }),
     })
       .then((res) => console.log("res", res))

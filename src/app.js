@@ -29,7 +29,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3001",
-      "https://b8lnk.vercel.app",
+      "https://linkpulse.vercel.app",
     ],
     credentials: true,
   }),
@@ -42,7 +42,7 @@ app.use("/api", routes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/", (req, res) => {
-  res.send("b8lnk backend is running!");
+  res.send("LinkPulse backend is running!");
 });
 app.listen(process.env.PORT || 9000, () => {
   console.log(`Server is running on port ${process.env.PORT || 9000}`);

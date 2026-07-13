@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "B8Lnk API",
+    "title": "LinkPulse API",
     "version": "1.0.0",
-    "description": "API documentation for B8Lnk"
+    "description": "API documentation for LinkPulse"
   },
   "servers": [
     {
@@ -45,7 +45,6 @@
           "slug": { "type": "string" },
           "destination": { "type": "string" },
           "clicks": { "type": "number" },
-          "susPopups": { "type": "boolean" },
           "og": {
             "type": "object",
             "properties": {

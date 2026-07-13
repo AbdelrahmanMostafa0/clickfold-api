@@ -356,6 +356,7 @@ const redirectLink = async (req, res) => {
     }
 
     const ip =
+      req.query.ip ||
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
       req.socket.remoteAddress;
     const userAgent = req.headers["user-agent"] || "";

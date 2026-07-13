@@ -256,7 +256,7 @@ Interactive documentation is available at `/api-docs` (Swagger UI).
 
 ## Related Repositories
 
-- **Frontend** -- [linkpulse](https://github.com/AbdelrahmanMostafa0/linkpulse)
+- **Frontend** -- [clickfold](https://github.com/AbdelrahmanMostafa0/clickfold)
 
 ---
 

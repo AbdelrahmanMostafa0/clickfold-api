@@ -307,17 +307,18 @@ const recordClickAnalytics = async ({
   vercelCountry,
   vercelCity,
 }) => {
-  let country = vercelCountry;
-  let city = vercelCity ? decodeURIComponent(vercelCity) : undefined;
-
-  if (!country) {
-    // Only pulls in geoip-lite's ~130MB dataset when Vercel's geo headers
-    // aren't present (i.e. local dev) — on Vercel this branch never runs.
-    const { default: geoip } = await import("geoip-lite");
-    const geo = geoip.lookup(ip);
-    country = geo?.country;
-    city = geo?.city;
-  }
+  // Vercel's x-vercel-ip-* headers reflect whichever hop last touched
+  // Vercel's edge — once this call is proxied through the frontend's own
+  // server-to-server fetch, Vercel overwrites those headers per-hop, so
+  // they can't be trusted here even if forwarded. The IP itself is still
+  // the real visitor IP (carried end-to-end via x-forwarded-for), so
+  // derive geo from that instead, falling back to the Vercel headers
+  // only if the IP can't be resolved (e.g. private/reserved ranges).
+  const { default: geoip } = await import("geoip-lite");
+  const geo = geoip.lookup(ip);
+  const country = geo?.country || vercelCountry;
+  const city =
+    geo?.city || (vercelCity ? decodeURIComponent(vercelCity) : undefined);
 
   const parser = new UAParser(userAgent);
   const ua = parser.getResult();

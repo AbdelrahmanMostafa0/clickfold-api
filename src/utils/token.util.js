@@ -76,6 +76,15 @@ export const setTokenCookies = (res, accessToken, refreshToken) => {
   return csrfToken;
 };
 
+// clearCookie only actually removes a cookie in the browser if its
+// options (secure/sameSite/path) match those it was set with.
+export const clearTokenCookies = (res) => {
+  const options = { secure: true, sameSite: "none", path: "/" };
+  res.clearCookie("accessToken", options);
+  res.clearCookie("refreshToken", options);
+  res.clearCookie("csrfToken", options);
+};
+
 export const generateTempToken = (userId, purpose, extra = {}) => {
   return jwt.sign(
     { userId, purpose, ...extra },

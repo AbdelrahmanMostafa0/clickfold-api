@@ -5,6 +5,7 @@ import { loginSchema, signupSchema } from "../validators/auth.validator.js";
 import {
   generateTokens,
   setTokenCookies,
+  clearTokenCookies,
   verifyRefreshToken,
 } from "../utils/token.util.js";
 import { generateTempToken, verifyTempToken } from "../utils/token.util.js";
@@ -181,9 +182,7 @@ const forgotPassword = async (req, res) => {
 };
 const logoutUser = async (req, res) => {
   try {
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
-    res.clearCookie("csrfToken");
+    clearTokenCookies(res);
     return sendSuccess(res, null, "User logged out successfully", 200);
   } catch (error) {
     return sendError(res, error?.message || "Internal Server Error", 500);

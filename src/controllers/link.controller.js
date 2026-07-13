@@ -331,28 +331,102 @@ const checkSlug = async (req, res) => {
 
 const userlinksStats = async (req, res) => {
   try {
-    const stats = await Link.aggregate([
-      { $match: { createdBy: req.user._id } },
-      {
-        $group: {
-          _id: null,
-          activeLinks: {
-            $sum: {
-              $cond: [{ $eq: ["$isActive", true] }, 1, 0],
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 90);
+    const filter = { createdBy: req.user._id, isDeleted: { $ne: true } };
+
+    const [totalsAgg, topLinks, links] = await Promise.all([
+      Link.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            activeLinks: {
+              $sum: {
+                $cond: [{ $eq: ["$isActive", true] }, 1, 0],
+              },
             },
+            totalClicks: { $sum: "$clicks" },
+            totalLinks: { $sum: 1 },
           },
-          totalClicks: { $sum: "$clicks" },
-          totalLinks: { $sum: 1 },
         },
-      },
+      ]),
+      Link.find(filter)
+        .sort({ clicks: -1 })
+        .limit(5)
+        .select("slug destination clicks"),
+      Link.find(filter).select("_id"),
     ]);
-    const result = stats[0] || {
+
+    const { activeLinks, totalClicks, totalLinks } = totalsAgg[0] || {
       activeLinks: 0,
       totalClicks: 0,
       totalLinks: 0,
     };
 
-    return sendSuccess(res, result, "Stats fetched successfully", 200);
+    const linkIds = links.map((link) => link._id);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    let analytics = {
+      clicksByDate: [],
+      topCountries: [],
+      topDevices: [],
+      topReferrers: [],
+    };
+
+    if (linkIds.length > 0) {
+      const [aggregation] = await Click.aggregate([
+        { $match: { link: { $in: linkIds }, createdAt: { $gte: since } } },
+        {
+          $facet: {
+            clicksByDate: [
+              {
+                $group: {
+                  _id: {
+                    $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+                  },
+                  clicks: { $sum: 1 },
+                },
+              },
+              { $sort: { _id: 1 } },
+              { $project: { _id: 0, date: "$_id", clicks: 1 } },
+            ],
+            topCountries: [
+              { $group: { _id: "$country", clicks: { $sum: 1 } } },
+              { $sort: { clicks: -1 } },
+              { $limit: 5 },
+              { $project: { _id: 0, name: "$_id", clicks: 1 } },
+            ],
+            topDevices: [
+              { $group: { _id: "$device", clicks: { $sum: 1 } } },
+              { $sort: { clicks: -1 } },
+              { $project: { _id: 0, name: "$_id", clicks: 1 } },
+            ],
+            topReferrers: [
+              { $match: { referer: { $ne: null } } },
+              { $group: { _id: "$referer", clicks: { $sum: 1 } } },
+              { $sort: { clicks: -1 } },
+              { $limit: 5 },
+              { $project: { _id: 0, name: "$_id", clicks: 1 } },
+            ],
+          },
+        },
+      ]);
+      analytics = {
+        clicksByDate: aggregation.clicksByDate,
+        topCountries: aggregation.topCountries,
+        topDevices: aggregation.topDevices,
+        topReferrers: aggregation.topReferrers,
+      };
+    }
+
+    return sendSuccess(
+      res,
+      { activeLinks, totalClicks, totalLinks, topLinks, analytics },
+      "Stats fetched successfully",
+      200,
+    );
   } catch (error) {
     return sendError(res, error.message, 500);
   }

@@ -10,6 +10,13 @@ const linkSchema = new Schema(
     },
     destination: { type: String, required: true },
     clicks: { type: Number, default: 0 },
+    campaignId: {
+      type: Schema.Types.ObjectId,
+      ref: "Campaign",
+      default: null,
+      index: true,
+    },
+    tags: { type: [String], default: [] },
     og: {
       title: { type: String, default: "" },
       description: { type: String, default: "" },

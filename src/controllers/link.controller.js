@@ -1,4 +1,5 @@
 import Link from "../models/link.model.js";
+import Campaign from "../models/campaign.model.js";
 import fs from "fs";
 import { sendSuccess, sendError } from "../utils/response.js";
 import cloudinary from "../utils/cloudinary.js";
@@ -9,9 +10,33 @@ import { nanoid } from "nanoid";
 import { formatSlug } from "../utils/link.js";
 import scrapeOG from "../utils/ogFetch.js";
 
+const parseTags = (tags) => {
+  if (!tags) return [];
+  if (Array.isArray(tags)) return tags.map((t) => t.trim()).filter(Boolean);
+  return String(tags)
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+};
+
+const resolveCampaignId = async (campaignId, userId) => {
+  if (!campaignId) return null;
+  const campaign = await Campaign.findOne({
+    _id: campaignId,
+    userId,
+    deletedAt: null,
+  });
+  if (!campaign) {
+    throw new Error("Invalid campaign");
+  }
+  return campaign._id;
+};
+
 const createLink = async (req, res) => {
   try {
-    const { slug, destination, ogTitle, ogDescription, ogMode } = req.body;
+    const { slug, destination, ogTitle, ogDescription, ogMode, tags } =
+      req.body;
+    const campaignId = req.body.campaignId || null;
 
     const linkExists = await Link.findOne({ slug });
     if (linkExists) {
@@ -20,6 +45,14 @@ const createLink = async (req, res) => {
     }
     if (ogMode === "custom" && !req.file) {
       return sendError(res, "Image is required for custom OG mode", 400);
+    }
+
+    let resolvedCampaignId;
+    try {
+      resolvedCampaignId = await resolveCampaignId(campaignId, req.user._id);
+    } catch {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return sendError(res, "Invalid campaign", 400);
     }
 
     let og = {
@@ -64,6 +97,8 @@ const createLink = async (req, res) => {
       destination,
       og,
       ogMode,
+      campaignId: resolvedCampaignId,
+      tags: parseTags(tags),
       createdBy: req.user._id,
     });
 
@@ -87,10 +122,19 @@ const updateLink = async (req, res) => {
       ogDescription,
       ogImage: ogImageString,
       ogMode,
+      tags,
     } = req.body;
+    const campaignId = req.body.campaignId || null;
     if (!link) {
       if (req.file) fs.unlinkSync(req.file.path);
       return sendError(res, "Link not found", 404);
+    }
+    let resolvedCampaignId;
+    try {
+      resolvedCampaignId = await resolveCampaignId(campaignId, req.user._id);
+    } catch {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return sendError(res, "Invalid campaign", 400);
     }
     let ogImage = null;
     if (req.file) {
@@ -134,6 +178,8 @@ const updateLink = async (req, res) => {
         destination,
         og,
         ogMode,
+        campaignId: resolvedCampaignId,
+        tags: parseTags(tags),
       },
       { new: true },
     );

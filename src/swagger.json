@@ -45,6 +45,11 @@
           "slug": { "type": "string" },
           "destination": { "type": "string" },
           "clicks": { "type": "number" },
+          "campaignId": { "type": "string", "nullable": true },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
           "og": {
             "type": "object",
             "properties": {
@@ -61,6 +66,24 @@
             "nullable": true
           },
           "isDeleted": { "type": "boolean", "default": false },
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Campaign": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "userId": { "type": "string" },
+          "linksCount": { "type": "number" },
+          "totalClicks": { "type": "number" },
           "deletedAt": {
             "type": "string",
             "format": "date-time",
@@ -94,6 +117,25 @@
           "data": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/Link" }
+          }
+        }
+      },
+      "ApiResponseCampaign": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/Campaign" }
+        }
+      },
+      "ApiResponseCampaignList": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Campaign" }
           }
         }
       }
@@ -407,7 +449,15 @@
                   "destination": { "type": "string" },
                   "ogTitle": { "type": "string" },
                   "ogDescription": { "type": "string" },
-                  "ogImage": { "type": "string", "format": "binary" }
+                  "ogImage": { "type": "string", "format": "binary" },
+                  "campaignId": {
+                    "type": "string",
+                    "description": "ID of a campaign owned by the authenticated user"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags"
+                  }
                 },
                 "required": ["slug", "destination"]
               }
@@ -601,7 +651,15 @@
                   },
                   "ogTitle": { "type": "string" },
                   "ogDescription": { "type": "string" },
-                  "ogImage": { "type": "string", "format": "binary" }
+                  "ogImage": { "type": "string", "format": "binary" },
+                  "campaignId": {
+                    "type": "string",
+                    "description": "ID of a campaign owned by the authenticated user"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags"
+                  }
                 }
               }
             }
@@ -637,6 +695,172 @@
           "200": { "description": "Link deleted successfully" },
           "401": { "description": "Unauthorized or not the owner" },
           "404": { "description": "Link not found" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/campaigns": {
+      "post": {
+        "tags": ["Campaigns"],
+        "summary": "Create a new campaign",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Campaign created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCampaign" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Internal server error" }
+        }
+      },
+      "get": {
+        "tags": ["Campaigns"],
+        "summary": "List the authenticated user's campaigns",
+        "description": "Each campaign includes linksCount and totalClicks aggregated from its links.",
+        "responses": {
+          "200": {
+            "description": "Campaigns fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCampaignList"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/campaigns/{id}": {
+      "get": {
+        "tags": ["Campaigns"],
+        "summary": "Get a campaign by id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Campaign fetched successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCampaign" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Campaign not found" },
+          "500": { "description": "Internal server error" }
+        }
+      },
+      "put": {
+        "tags": ["Campaigns"],
+        "summary": "Update a campaign",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Campaign updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseCampaign" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Campaign not found" },
+          "500": { "description": "Internal server error" }
+        }
+      },
+      "delete": {
+        "tags": ["Campaigns"],
+        "summary": "Delete a campaign",
+        "description": "Soft-deletes the campaign and unlinks it from its links (their campaignId is set to null).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Campaign deleted successfully" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Campaign not found" },
+          "500": { "description": "Internal server error" }
+        }
+      }
+    },
+    "/campaigns/{id}/stats": {
+      "get": {
+        "tags": ["Campaigns"],
+        "summary": "Get aggregated analytics for a campaign",
+        "description": "Returns total clicks, per-link clicks, clicks-by-date, top countries, and top devices across all links in the campaign.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 30, "minimum": 1, "maximum": 90 }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Campaign stats fetched successfully" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Campaign not found" },
           "500": { "description": "Internal server error" }
         }
       }
